@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ocena CV: {{ title }}</title>
+<style>
+  :root { --good:#1b7f3b; --ok:#5f7d00; --weak:#a35c00; --bad:#b3261e; --unk:#5f6368; --bg:#f7f7f8; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color:#1f1f1f; line-height:1.45; }
+  main { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .3rem; } h2 { margin-top: 2rem; border-bottom: 2px solid #ddd; padding-bottom:.2rem; }
+  .meta { color:#555; font-size:.9rem; }
+  .cards { display:flex; flex-wrap:wrap; gap:.8rem; margin:1rem 0; }
+  .card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:.7rem 1rem; min-width:150px; }
+  .card .v { font-size:1.8rem; font-weight:700; } .card .l { font-size:.85rem; color:#555; }
+  table { border-collapse: collapse; width:100%; background:#fff; margin:.6rem 0 1rem; font-size:.92rem; }
+  caption { text-align:left; font-weight:600; padding:.3rem 0; }
+  th, td { border:1px solid #ddd; padding:.35rem .5rem; vertical-align:top; text-align:left; }
+  th { background:#eef0f3; }
+  td.num { text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
+  .s-good { color:var(--good); font-weight:600; } .s-ok { color:var(--ok); font-weight:600; }
+  .s-weak { color:var(--weak); font-weight:600; } .s-bad { color:var(--bad); font-weight:700; } .s-unknown { color:var(--unk); }
+  .bar { display:inline-block; height:.55rem; background:#ccd; border-radius:3px; width:80px; vertical-align:middle; margin-left:.3rem; }
+  .bar > span { display:block; height:100%; border-radius:3px; background:#4a6fa5; }
+  .alert { background:#fdecea; border-left:5px solid var(--bad); padding:.6rem 1rem; margin:1rem 0; }
+  .verdict { padding:.6rem 1rem; margin:1rem 0; border-radius:6px; border-left:6px solid; background:#fff; }
+  .v-shortlista { border-color:var(--good); } .v-dopytaj { border-color:var(--weak); } .v-odrzuc { border-color:var(--bad); }
+  .warn { background:#fff4e5; border-left:5px solid var(--weak); padding:.5rem 1rem; margin:.5rem 0; font-size:.9rem; }
+  details summary { cursor:pointer; color:#2b4c7e; }
+  ul.ev { margin:.2rem 0 .2rem 1rem; padding:0; } ul.ev li { margin:.1rem 0; }
+  .note { font-size:.85rem; color:#444; background:#fff; border:1px solid #ddd; padding:.6rem 1rem; border-radius:6px; }
+  @media print { details { display:block; } details > * { display:block; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Ocena aplikacji: {{ title }}</h1>
+<p class="meta">CV: {{ cv_path }}{% if job_path %} · Oferta: {{ job_path }}{% endif %}{% if letter_path %} · List: {{ letter_path }}{% endif %}<br>
+Profil: <strong>{{ profile }}</strong> · Utworzono: {{ created }} · cvscore {{ version }}</p>
+
+<section aria-label="Wyniki zbiorcze" class="cards">
+{% for c in cards %}
+  <div class="card"><div class="v {{ c.cls }}">{{ c.value }}</div><div class="l">{{ c.label }}</div></div>
+{% endfor %}
+</section>
+
+{% if verdict %}
+<div class="verdict v-{{ verdict.decision|replace('ć','c')|replace('ś','s') }}" role="status">
+<strong>Przesiew rekrutera: {{ verdict.decision|upper }}</strong> - {{ verdict.sentence }}
+</div>
+{% endif %}
+{% if critical %}
+<div class="alert" role="alert"><strong>Warunek konieczny niespełniony.</strong> Wynik ogólny ograniczono do {{ cap }}.
+<ul>{% for m in critical %}{% for e in m.evidence if e.startswith('BRAK') %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul></div>
+{% endif %}
+{% for w in warnings %}<div class="warn">{{ w }}</div>{% endfor %}
+
+<h2>Co poprawić najpierw</h2>
+<table>
+<caption>Rekomendacje uszeregowane według szacowanego wzrostu wyniku ogólnego (gdyby metryka osiągnęła 90)</caption>
+<thead><tr><th scope="col">#</th><th scope="col">Metryka</th><th scope="col">Obecnie</th><th scope="col">Zysk</th><th scope="col">Co zrobić</th></tr></thead>
+<tbody>
+{% for r in recommendations %}
+<tr><td class="num">{{ loop.index }}</td><td>{{ r.label }}{% if r.critical %} <strong class="s-bad">(krytyczne)</strong>{% endif %}</td>
+<td class="num">{{ "–" if r.current is none else r.current|round|int }}</td><td class="num">+{{ r.gain }}</td><td>{{ r.text }}</td></tr>
+{% else %}<tr><td colspan="5">Brak istotnych rekomendacji.</td></tr>{% endfor %}
+</tbody></table>
+
+{% if rewrites %}
+<h2>Szkice przeredagowania słabych punktów</h2>
+<table>
+<caption>Szkic porządkuje to, co już jest w CV; w [nawiasach] wpisz prawdziwe fakty albo usuń nawias i popraw odmianę wyrazów (np. „zajęć” → „zajęcia”) - narzędzie niczego nie zmyśla</caption>
+<thead><tr><th scope="col">Obecnie</th><th scope="col">Szkic</th><th scope="col">Dlaczego</th></tr></thead>
+<tbody>{% for r in rewrites %}<tr><td>{{ r.original }}</td><td>{{ r.draft }}</td><td>{{ r.why }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+
+{% for g in groups %}
+<h2>{{ g.label }} <span class="{{ g.cls }}">{{ g.score }}</span></h2>
+<table>
+<caption>{{ g.label }}: {{ g.metrics|length }} metryk. Waga = waga bazowa x mnożnik profilu. „–” = nie dało się zmierzyć (to nie jest 0).</caption>
+<thead><tr><th scope="col">Metryka</th><th scope="col">Wynik</th><th scope="col">Status</th><th scope="col">Wartość</th><th scope="col">Waga</th><th scope="col">Dowody i wyjaśnienie</th></tr></thead>
+<tbody>
+{% for m in g.metrics %}
+<tr>
+<th scope="row">{{ m.label }}</th>
+<td class="num">{% if m.score is none %}–{% else %}{{ m.score|round|int }}<span class="bar" aria-hidden="true"><span style="width:{{ m.score|round|int }}%"></span></span>{% endif %}</td>
+<td class="s-{{ m.status }}">{{ status_names[m.status] }}</td>
+<td>{{ m.value }}</td>
+<td class="num">{{ "%.2f"|format(m.weight) }}</td>
+<td><details><summary>{{ m.explanation }}</summary><ul class="ev">{% for e in m.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+{% if m.suggestion %}<p><strong>Sugestia:</strong> {{ m.suggestion }}</p>{% endif %}</details></td>
+</tr>
+{% endfor %}
+</tbody></table>
+{% endfor %}
+
+{% if requirements %}
+<h2>Wymagania z oferty i dowody w CV</h2>
+<table>
+<caption>Poziom dowodu: 0 brak, 1 wzmianka (np. lista umiejętności), 2 w doświadczeniu, 3 w doświadczeniu z wynikiem/liczbą; ? = nie do oceny z CV</caption>
+<thead><tr><th scope="col">Typ</th><th scope="col">Wymaganie</th><th scope="col">Poziom</th><th scope="col">Gdzie / jak</th><th scope="col">Najlepszy fragment CV</th></tr></thead>
+<tbody>
+{% for r in requirements %}
+<tr><td>{{ r.kind }}</td><td>{{ r.text }}</td><td class="num {{ r.cls }}">{{ r.level }}</td><td>{{ r.how }}</td><td>{{ r.line }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+
+{% if roles %}
+<h2>Trafność poszczególnych ról</h2>
+<table>
+<caption>Każda rola oceniana 0-3 w czterech wymiarach; liczy się najlepsza rola (+0,3 za drugą mocną), nie suma lat</caption>
+<thead><tr><th scope="col">Rola</th><th scope="col">Okres</th><th scope="col">Problem</th><th scope="col">Kontekst</th><th scope="col">Skala</th><th scope="col">Samodzielność</th><th scope="col">Świeżość</th><th scope="col">Wynik</th></tr></thead>
+<tbody>
+{% for r in roles %}
+<tr><td>{{ r.title }}</td><td>{{ r.period }}</td><td class="num">{{ r.problem }}</td><td class="num">{{ r.context }}</td><td class="num">{{ r.scale }}</td><td class="num">{{ r.ownership }}</td><td class="num">x{{ r.fresh }}</td><td class="num">{{ r.score }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+
+<h2>Jak narzędzie odczytało CV</h2>
+<table>
+<caption>Rozpoznane sekcje</caption>
+<thead><tr><th scope="col">Sekcja</th><th scope="col">Nagłówek w CV</th><th scope="col">Linii</th></tr></thead>
+<tbody>{% for s in sections %}<tr><td>{{ s.key }}</td><td>{{ s.title }}</td><td class="num">{{ s.lines }}</td></tr>{% endfor %}</tbody>
+</table>
+<table>
+<caption>Oś czasu (datowane wpisy)</caption>
+<thead><tr><th scope="col">Sekcja</th><th scope="col">Od</th><th scope="col">Do</th><th scope="col">Mies.</th><th scope="col">Wpis</th></tr></thead>
+<tbody>{% for e in entries %}<tr><td>{{ e.section }}</td><td>{{ e.start }}</td><td>{{ e.end }}</td><td class="num">{{ e.months }}</td><td>{{ e.title }}</td></tr>
+{% else %}<tr><td colspan="5">Nie odczytano dat - sprawdź format (np. 03.2019 – 06.2021).</td></tr>{% endfor %}</tbody>
+</table>
+<table>
+<caption>Strony PDF</caption>
+<thead><tr><th scope="col">Strona</th><th scope="col">Metoda</th><th scope="col">Znaków</th><th scope="col">Kolumn</th><th scope="col">Grafika</th><th scope="col">Pewność OCR</th></tr></thead>
+<tbody>{% for p in pages %}<tr><td class="num">{{ p.number }}</td><td>{{ p.method }}</td><td class="num">{{ p.chars }}</td><td class="num">{{ p.columns }}</td><td class="num">{{ (p.image_coverage*100)|round|int }}%</td><td class="num">{{ p.ocr_confidence if p.ocr_confidence is not none else "–" }}</td></tr>{% endfor %}</tbody>
+</table>
+<p><strong>Umiejętności rozpoznane w CV:</strong> {{ skills|join(", ") }}</p>
+<details><summary>Tekst odczytany z CV (kolejność czytania po rekonstrukcji układu)</summary><pre style="white-space:pre-wrap">{{ cv_text }}</pre></details>
+
+<h2>Uwagi metodyczne</h2>
+<div class="note">
+<p>Wynik jest porównawczy, nie jest prawdopodobieństwem zaproszenia ani zatrudnienia. Narzędzie nie używa modeli językowych (LLM):
+ekstrakcja (PyMuPDF, Tesseract OCR), słowniki umiejętności PL/EN, reguły, TF-IDF, BM25{% if embeddings %} i lokalny model embeddingów zdań{% endif %}.
+„Nie zmierzono” (–) oznacza brak informacji w dokumencie i nie obniża wyniku - obniża natomiast pewność oceny ({{ confidence }}).
+Kompetencje miękkie i dokumenty (niekaralność, badania) nie są oceniane z CV. Dane osobowe, wiek, płeć, zdjęcie nie wpływają na dopasowanie.</p>
+</div>
+</main>
+</body>
+</html>

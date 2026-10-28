@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zestawienie aplikacji - cvscore</title>
+<style>
+  :root { --good:#1b7f3b; --ok:#5f7d00; --weak:#a35c00; --bad:#b3261e; --unk:#5f6368; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin:0; background:#f7f7f8; color:#1f1f1f; }
+  main { max-width: 1280px; margin:0 auto; padding:1.5rem; }
+  h2 { margin-top:2rem; border-bottom:2px solid #ddd; }
+  table { border-collapse:collapse; width:100%; background:#fff; font-size:.9rem; margin:.5rem 0 1rem; }
+  caption { text-align:left; font-weight:600; padding:.3rem 0; }
+  th, td { border:1px solid #ddd; padding:.3rem .45rem; text-align:left; vertical-align:top; }
+  th { background:#eef0f3; } td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .s-good { color:var(--good); font-weight:600; } .s-ok { color:var(--ok); font-weight:600; }
+  .s-weak { color:var(--weak); font-weight:600; } .s-bad { color:var(--bad); font-weight:700; } .s-unknown { color:var(--unk); }
+  .note { background:#fff; border:1px solid #ddd; padding:.6rem 1rem; border-radius:6px; font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Zestawienie aplikacji</h1>
+
+<h2>Aplikacje</h2>
+<table>
+<caption>{{ rows|length }} aplikacji; kliknij identyfikator, aby otworzyć pełny raport</caption>
+<thead><tr><th scope="col">Aplikacja</th><th scope="col">CV</th><th scope="col">Oferta</th><th scope="col">List</th><th scope="col">Profil</th>
+<th scope="col">Ogólny</th><th scope="col">Dopasowanie</th><th scope="col">Jakość CV</th><th scope="col">List</th><th scope="col">Pewność</th>
+<th scope="col">Przesiew</th><th scope="col">Wynik rekrutacji</th><th scope="col">Najważniejsze poprawki</th></tr></thead>
+<tbody>
+{% for r in rows %}
+<tr><th scope="row"><a href="{{ r.href }}">{{ r.id }}</a>{% if r.critical %} <span class="s-bad">(knock-out)</span>{% endif %}</th>
+<td>{{ r.cv }}</td><td>{{ r.job_title or r.job }}</td><td>{{ r.letter }}</td><td>{{ r.profile }}</td>
+<td class="num {{ r.cls }}">{{ r.scores.overall }}</td><td class="num">{{ r.scores.job_fit }}</td><td class="num">{{ r.scores.cv_quality }}</td>
+<td class="num">{{ r.scores.letter }}</td><td class="num">{{ r.confidence }}</td><td>{{ r.verdict }}</td><td>{{ r.outcome }}</td>
+<td>{{ r.recs|join("; ") }}{% for n in r.notes %}<br><small>{{ n }}</small>{% endfor %}</td></tr>
+{% else %}<tr><td colspan="13">Nie znaleziono aplikacji (podfolderów z CV albo manifest.yaml).</td></tr>{% endfor %}
+</tbody></table>
+
+{% if best %}
+<h2>Która wersja CV najlepiej pasuje do której oferty</h2>
+<table>
+<caption>Dopasowanie do oferty (job fit, 0-100) najlepszej i drugiej wersji CV</caption>
+<thead><tr><th scope="col">Oferta</th><th scope="col">Najlepsze CV</th><th scope="col">Wynik</th><th scope="col">Drugie</th><th scope="col">Wynik</th></tr></thead>
+<tbody>{% for b in best %}<tr><th scope="row">{{ b.title or b.job }}</th><td>{{ b.best }}</td><td class="num">{{ b.score }}</td><td>{{ b.runner }}</td><td class="num">{{ b.runner_score }}</td></tr>{% endfor %}</tbody>
+</table>
+
+<table>
+<caption>Macierz: każde CV z każdą ofertą (dopasowanie do oferty; * = niespełniony warunek konieczny)</caption>
+<thead><tr><th scope="col">CV \ oferta</th>{% for j in jobs %}<th scope="col">{{ j }}</th>{% endfor %}</tr></thead>
+<tbody>{% for m in matrix %}<tr><th scope="row">{{ m.cv }}</th>{% for c in m.cells %}<td class="num {{ c.cls }}">{{ c.v }}{% if c.crit %}*{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+
+<h2>Które metryki przewidują zaproszenie na rozmowę</h2>
+{% if analysis.note %}<p class="note">{{ analysis.note }}</p>{% else %}
+<p class="note">Zakończonych rekrutacji z wynikiem: {{ analysis.n_labeled }} (pozytywnych: {{ analysis.n_positive }}).
+AUC 0,5 = metryka nie odróżnia sukcesów od porażek; 1,0 = odróżnia idealnie; poniżej 0,5 = działa odwrotnie.
+Przy małej liczbie rekrutacji traktuj to jako wskazówkę, nie dowód.</p>
+<table>
+<caption>Wyniki zbiorcze vs wynik rekrutacji</caption>
+<thead><tr><th scope="col">Wynik</th><th scope="col">AUC</th><th scope="col">Korelacja punktowo-dwuseryjna</th><th scope="col">NDCG</th></tr></thead>
+<tbody>{% for k, v in analysis.composites.items() %}<tr><th scope="row">{{ k }}</th><td class="num">{{ "%.2f"|format(v.auc) }}</td><td class="num">{{ "%.2f"|format(v.r_pb) }}</td><td class="num">{{ "%.2f"|format(v.ndcg) }}</td></tr>{% endfor %}</tbody>
+</table>
+<table>
+<caption>Poszczególne metryki (najsilniej różnicujące na górze)</caption>
+<thead><tr><th scope="col">Metryka</th><th scope="col">n</th><th scope="col">AUC</th><th scope="col">Korelacja</th></tr></thead>
+<tbody>{% for m in analysis.metrics %}<tr><th scope="row">{{ m.label }}</th><td class="num">{{ m.n }}</td><td class="num">{{ "%.2f"|format(m.auc) }}</td><td class="num">{{ "%.2f"|format(m.r_pb) }}</td></tr>{% endfor %}</tbody>
+</table>
+{% if analysis.model %}
+<table>
+<caption>Regresja logistyczna na wynikach rekrutacji (n = {{ analysis.model.n }}, AUC leave-one-out = {{ "%.2f"|format(analysis.model.loo_auc) }}); współczynnik &gt; 0 = metryka sprzyja zaproszeniu</caption>
+<thead><tr><th scope="col">Metryka</th><th scope="col">Współczynnik</th></tr></thead>
+<tbody>{% for m in analysis.model.importance %}<tr><th scope="row">{{ m.metric }}</th><td class="num">{{ "%+.2f"|format(m.coef) }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+{% endif %}
+</main>
+</body>
+</html>

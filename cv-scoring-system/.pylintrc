@@ -1,0 +1,20 @@
+[MAIN]
+init-hook='import sys; sys.path.insert(0, "tools")'
+
+[FORMAT]
+max-line-length=130
+
+[MESSAGES CONTROL]
+# Size/complexity heuristics: metric functions and parsers are intentionally long and flat;
+# line length is limited by the formatter setting above, very long data lines are tolerated.
+disable=line-too-long,
+        too-many-locals,
+        too-many-branches,
+        too-many-statements,
+        too-many-arguments,
+        too-many-positional-arguments,
+        too-many-instance-attributes,
+        too-many-return-statements,
+        too-many-boolean-expressions,
+        too-few-public-methods,
+        too-many-lines

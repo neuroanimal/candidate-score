@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Porównanie wersji CV</title>
+<style>
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin:0; background:#f7f7f8; color:#1f1f1f; }
+  main { max-width:1200px; margin:0 auto; padding:1.5rem; }
+  table { border-collapse:collapse; width:100%; background:#fff; font-size:.92rem; margin:.5rem 0 1rem; }
+  caption { text-align:left; font-weight:600; padding:.3rem 0; }
+  th, td { border:1px solid #ddd; padding:.3rem .45rem; text-align:left; vertical-align:top; }
+  th { background:#eef0f3; } td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .best { background:#e6f4ea; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+<h1>Porównanie wersji CV{% if job %} dla oferty: {{ job }}{% endif %}</h1>
+<table>
+<caption>Wyniki zbiorcze (zielone tło = najlepsza wersja)</caption>
+<thead><tr><th scope="col">Wynik</th>{% for n in names %}<th scope="col">{{ n }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in composites %}<tr><th scope="row">{{ row.label }}</th>{% for c in row.cells %}<td class="num{% if c.best %} best{% endif %}">{{ c.v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table>
+<table>
+<caption>Metryki, w których wersje różnią się najbardziej (różnica ważona wagą metryki)</caption>
+<thead><tr><th scope="col">Metryka</th>{% for n in names %}<th scope="col">{{ n }}</th>{% endfor %}<th scope="col">Różnica</th></tr></thead>
+<tbody>{% for row in metrics %}<tr><th scope="row">{{ row.label }}</th>{% for c in row.cells %}<td class="num{% if c.best %} best{% endif %}">{{ c.v }}</td>{% endfor %}<td class="num">{{ row.spread }}</td></tr>{% endfor %}</tbody>
+</table>
+</main>
+</body>
+</html>

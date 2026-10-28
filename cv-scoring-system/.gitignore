@@ -1,0 +1,12 @@
+# personal data - real CVs, letters, offers and the reports about them
+data/
+reports/
+model.json
+# environment / build
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+.pytest_cache/
